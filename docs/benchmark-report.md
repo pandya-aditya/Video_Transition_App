@@ -30,3 +30,23 @@ The collection was useful for exercising the pipeline but was selected chiefly f
 5. Refactor only to isolate retrieval, temporal ranking, and evaluation variants. More infrastructure or visual polish does not address the demonstrated failure.
 
 The agreed gate remains pending: a user-keepable top-six result for at least half of 8–10 moments and three convincing user-approved exports. A blind review set of 25 actual pairs is prepared, but collecting preferences on uniformly weak options should not substitute for the positive-edit feasibility experiment.
+
+## User-provided targeted collection — 2026-10-20
+
+Eight approved files from the workspace `Videos/` folder, 118.60 seconds total, were imported as managed copies. The original public collection remains available separately. The updated comparison uses one outgoing moment near 2.1 seconds per new clip, fixed outgoing timing, two-second context, and the same frozen pretrained encoder. No user labels or training are involved.
+
+Raw reproducible output: `data/targeted-benchmark.json`; before decode optimization: `data/targeted-benchmark-initial.json`. Run `PYTHONPATH=. .venv/bin/python scripts/benchmark_targeted.py`.
+
+| Measurement | Observed range / median |
+| --- | --- |
+| Coarse composition/motion search | 0.162–0.469 s / 0.277 s |
+| Coarse shape-union search | 0.166–0.543 s / 0.257 s |
+| First incoming refinement | 1.901–4.363 s / 3.432 s |
+| Repeat refined search with detail cache | median 0.212 s |
+| Retained working footprint | 2.285 GB |
+
+These are engine timings, excluding browser polling, queue delay, initial model load and unrelated load on the Mac. First refined searches still sometimes exceed the three-second target. Refinement is optional and retained coarse candidates remain eligible. The optimization decodes shared visual/motion frames together instead of repeatedly decoding each candidate; it reduced the earlier 3.85–8.06-second refinement run to the reported range.
+
+Actual top results include eye → marble, car → cheetah and eclipse → sun. These are observed model outputs, not preassigned source pairs. Other results remain weak, including basketball → car and cheetah → basketball for the tested query points. Rounded-object detection can miss transparent objects, capture a glow rather than its core, or latch onto texture/overlays. It should be treated as an experimental additional retrieval channel. The subjective success gate remains unproven.
+
+Verification for this update: 13 automated tests pass, covering prior PTS/VFR/rotation/render boundaries plus collection isolation, repeatable folder imports that do not follow symlinks, geometric evidence availability, and refinement retaining valid coarse candidates. TypeScript checking and the production frontend build pass. User-facing source names are descriptive labels from inspection; no pairing rules depend on those labels or filenames.

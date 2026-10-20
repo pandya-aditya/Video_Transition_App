@@ -51,14 +51,24 @@ async def upload(file:UploadFile=File(...)):
                 f.write(chunk)
     except BaseException:path.unlink(missing_ok=True);raise
     return {'id':store.enqueue('index',{'path':str(path),'name':Path(file.filename or 'Clip').stem})}
+@app.post('/api/sync-videos')
+def sync_videos():
+    folder=store.ROOT/'Videos'
+    if not folder.is_dir():raise ValueError('Create a Videos folder in this workspace first')
+    return {'id':store.enqueue('index-folder',{'path':str(folder),'collection':'targeted'})}
+
 class Search(BaseModel):
     asset:str
     frame:int=Field(ge=0)
     mode:str='combined'
     nearby:bool=True
+    refine:bool=True
+    collection:str='all'
+    before:float=Field(default=2,ge=.25,le=5)
+    after:float=Field(default=2,ge=.25,le=5)
 @app.post('/api/search')
 def search(body:Search):
-    if body.mode not in ('combined','appearance'):raise ValueError('Unknown ranking mode')
+    if body.mode not in ('combined','appearance','shape'):raise ValueError('Unknown ranking mode')
     return {'id':store.enqueue('search',body.model_dump())}
 class Edit(BaseModel):
     a:str;ai:int=Field(ge=0);b:str;bi:int=Field(ge=0)
@@ -95,10 +105,14 @@ def retry(key:str):
     return store.job(key)
 
 @app.get('/api/review')
-def review():
+def review(collection:str='all'):
     path=store.DATA/'review-study.json'
     if not path.exists():return []
     rows=json.loads(path.read_text())
+    if collection!='all':
+        from .library import select_collection
+        ids={a['id'] for a in select_collection(store.assets(),collection)}
+        rows=[r for r in rows if r['edit']['a'] in ids and r['left']['b'] in ids and r['right']['b'] in ids]
     with store.connect() as db:
         done={json.loads(r['body']).get('review_id') for r in db.execute('SELECT body FROM labels')}
     return [{k:v for k,v in r.items() if not k.endswith('_method')} for r in rows if r['id'] not in done]

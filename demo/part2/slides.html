@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Match Cut — Architecture</title>
+<style>
+  :root{--bg:#11120f;--ink:#edece4;--muted:#9da28f;--dim:#737e65;--line:#33362b;--accent:#c5ed80;--panel:#191b16;--panel2:#1f2219;--warn:#e9a07a}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:#000;color:var(--ink);font-family:Arial,Helvetica,sans-serif;overflow:hidden}
+  #deck{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform-origin:0 0;background:var(--bg)}
+  .slide{position:absolute;inset:0;padding:96px 150px 0;display:none}
+  .slide.on{display:block}
+  .chrome{position:absolute;left:150px;right:150px;bottom:52px;border-top:1px solid var(--line);padding-top:18px;display:flex;justify-content:space-between;font-size:14px;letter-spacing:3px;color:var(--dim);text-transform:uppercase}
+  .brand{font-weight:800;letter-spacing:-.6px;font-size:18px;color:var(--ink);text-transform:none}.brand i{font-style:normal;color:var(--accent)}
+  .kicker{font-size:18px;letter-spacing:4px;color:#b8c69e;text-transform:uppercase;margin-bottom:18px}
+  h1{font-family:Georgia,serif;font-weight:400;font-size:120px;letter-spacing:-5px;line-height:1;margin:0}
+  h2{font-family:Georgia,serif;font-weight:400;font-size:64px;letter-spacing:-2.4px;line-height:1.05;margin:0 0 44px}
+  .accent{color:var(--accent)} .muted{color:var(--muted)} .warn{color:var(--warn)}
+  p.lede{font-size:30px;line-height:1.5;color:var(--muted);max-width:1300px}
+  .b{opacity:0;transform:translateY(14px);transition:opacity .45s ease,transform .45s ease}
+  .b.show{opacity:1;transform:none}
+  g.b{transform:none}
+  .grid{display:grid;gap:28px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:30px 32px}
+  .card h3{margin:0 0 14px;font-size:16px;letter-spacing:3px;color:var(--accent);font-weight:400;text-transform:uppercase}
+  .card p,.card li{font-size:24px;line-height:1.5;color:#c9cbbd;margin:0}
+  .card ul{margin:0;padding-left:24px}.card li+li{margin-top:8px}
+  .tag{display:inline-block;font-size:14px;letter-spacing:2px;padding:6px 10px;border-radius:4px;border:1px solid var(--line);color:var(--muted);text-transform:uppercase}
+  .tag.m{border-color:#5d7140;color:var(--accent)} .tag.t{border-color:#6b5a3e;color:#e4c78d}
+  /* SVG diagrams */
+  svg .box{fill:var(--panel2);stroke:#4a4f3d;stroke-width:1.5}
+  svg .box.hi{stroke:var(--accent)}
+  svg .t{fill:var(--ink);font-size:22px;font-weight:700;font-family:Arial,Helvetica,sans-serif}
+  svg .s{fill:var(--muted);font-size:16px;font-family:Arial,Helvetica,sans-serif}
+  svg .ln{stroke:#7f8a6a;stroke-width:2;fill:none;marker-end:url(#arrow)}
+  svg .ln.hot{stroke:var(--accent)}
+  svg .lbl{fill:#b8c69e;font-size:14px;letter-spacing:1px;font-family:Arial,Helvetica,sans-serif}
+  svg .zone{fill:none;stroke:#2c3024;stroke-dasharray:6 6}
+  svg .zl{fill:var(--dim);font-size:13px;letter-spacing:3px;font-family:Arial,Helvetica,sans-serif}
+  svg .warnbox{fill:none;stroke:var(--warn);stroke-width:3;stroke-dasharray:8 6}
+  /* pipeline */
+  .pipe{display:grid;grid-template-columns:repeat(5,1fr);gap:22px;margin-top:20px}
+  .stage{background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--accent);border-radius:8px;padding:26px 24px;min-height:300px}
+  .stage b{display:block;font-size:14px;letter-spacing:3px;color:var(--dim);font-weight:400}
+  .stage h4{font-family:Georgia,serif;font-weight:400;font-size:40px;margin:10px 0 14px}
+  .stage p{font-size:20px;line-height:1.45;color:#c9cbbd;margin:0}
+  .split{display:grid;grid-template-columns:3fr 2fr;margin-top:26px;gap:22px}
+  .bracket{border-top:2px solid #4a4f3d;padding-top:14px;font-size:18px;letter-spacing:3px;color:var(--muted);text-transform:uppercase}
+  .bracket.on{border-color:var(--accent);color:var(--accent)}
+  /* funnel */
+  .funnel{display:flex;flex-direction:column;gap:14px;align-items:flex-start}
+  .fstep{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:6px;padding:18px 26px;display:flex;justify-content:space-between;align-items:center;gap:30px}
+  .fstep h4{margin:0;font-size:26px;font-weight:400}.fstep span{font-size:18px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .budget .row{display:grid;grid-template-columns:200px 1fr 90px;align-items:center;gap:16px;margin:14px 0;font-size:20px}
+  .budget .bar{height:14px;background:#2a2f22;border-radius:3px;overflow:hidden}.budget .bar i{display:block;height:100%;background:#a2bf75}
+  .budget .row span:last-child{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
+  /* formula */
+  .formula{display:flex;gap:16px;align-items:stretch;margin-top:10px}
+  .term{flex:var(--w);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:22px}
+  .term b{font-size:44px;font-family:Georgia,serif;font-weight:400;color:var(--accent)}
+  .term span{display:block;font-size:20px;color:#c9cbbd;margin-top:8px}.term small{display:block;font-size:16px;color:var(--muted);margin-top:6px}
+  .strip{display:grid;grid-template-columns:repeat(6,1fr);gap:16px;margin-top:34px}
+  .strip figure{margin:0;background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .strip figure.top{border-color:var(--accent)}
+  .strip .img{aspect-ratio:16/10;background:#0b0c09 center/cover no-repeat}
+  .strip figcaption{padding:12px 14px 16px;font-size:18px}
+  .strip small{display:block;color:var(--muted);font-size:15px;margin-top:6px;font-variant-numeric:tabular-nums}
+  pre.spec{font-family:Menlo,Consolas,monospace;font-size:22px;line-height:1.55;background:#0c0d0a;border:1px solid var(--line);border-radius:8px;padding:28px 32px;margin:0;color:#d6dbc9}
+  pre.spec .k{color:#b8c69e}
+  .cycle{position:relative;width:100%;height:600px}
+  /* notes */
+  aside.notes{display:none}
+  #notes{position:fixed;left:0;right:0;bottom:0;max-height:38vh;overflow:auto;background:#0b0c09ee;border-top:1px solid var(--line);padding:18px 28px;font-size:18px;line-height:1.5;color:#d8dccb;display:none;z-index:10}
+  #notes.on{display:block}
+  #hud{position:fixed;right:14px;top:10px;font-size:12px;color:#555c4a;letter-spacing:1px;z-index:11;display:none}
+  #hud.on{display:block}
+  /* export mode: every slide stacked, every build visible */
+  body.all{overflow:auto;height:auto}
+  body.all #deck{position:static;transform:none!important;background:none}
+  body.all .slide{display:block;position:relative;width:1920px;height:1080px;background:var(--bg);margin-bottom:20px}
+  body.all .b{opacity:1;transform:none;transition:none}
+  /* presenter */
+  body.presenter{overflow:auto;background:#0e0f0c;padding:30px 40px;font-size:22px;line-height:1.6}
+  body.presenter #deck,body.presenter #hud,body.presenter #notes{display:none}
+  #presenter h1{font-size:40px;letter-spacing:-1px;margin:6px 0 18px}
+  #presenter .meta{color:var(--accent);letter-spacing:2px;font-size:15px}
+  #presenter .next{color:var(--dim);margin-top:30px;font-size:17px}
+  #presenter .step{border-left:3px solid #2c3024;padding-left:14px;margin:10px 0;color:#7d8470}
+  #presenter .step.now{border-color:var(--accent);color:var(--ink)}
+</style>
+</head>
+<body>
+<div id="deck">
+
+<!-- 1 -->
+<section class="slide" data-title="From a laptop prototype to a production service">
+  <div style="padding-top:150px">
+    <div class="kicker">Part 2 · Architecture</div>
+    <h1>Built to <span class="accent">scale.</span></h1>
+    <p class="lede" style="margin-top:40px">How Match Cut works, and how the same design runs as a multi-tenant production service.</p>
+    <div style="display:flex;gap:14px;margin-top:50px"><span class="tag">React</span><span class="tag">FastAPI</span><span class="tag">PyTorch · DINOv2</span><span class="tag">OpenCV</span><span class="tag">MediaPipe</span><span class="tag">FFmpeg</span><span class="tag">SQLite → Postgres</span></div>
+  </div>
+  <div class="chrome"><span class="brand">MATCH <i>/</i> CUT</span><span>01</span></div>
+  <aside class="notes"><p>In the first part you saw Match Cut find a pupil-to-eclipse cut. Now I'll walk through how it works, and how I'd run it as a production service. The prototype runs on my laptop, but I designed it around the seams that a scaled system needs.</p></aside>
+</section>
+
+<!-- 2 -->
+<section class="slide" data-title="Requirements and scale targets">
+  <div class="kicker">What production means</div>
+  <h2>Requirements</h2>
+  <div class="grid" style="grid-template-columns:1fr 1fr 1fr">
+    <div class="card b" data-b="1"><h3>Functional</h3><ul><li>Many users upload footage</li><li>Search any frame for the next shot</li><li>Preview and export a frame-exact cut</li><li>Feedback improves ranking</li></ul></div>
+    <div class="card b" data-b="2"><h3>Scale <span class="tag t" style="margin-left:8px">targets</span></h3><ul><li>Search p95 &lt; 1 s</li><li>~10,000 hours indexed across tenants</li><li>Indexing keeps pace with uploads</li><li>Tenant media fully isolated</li></ul></div>
+    <div class="card b" data-b="3" style="border-color:#5d7140"><h3>Hard constraint</h3><p>A cut lands on one exact <b>decoded</b> frame. Never estimate a frame from fps × timestamp.</p><p class="muted" style="margin-top:18px;font-size:20px">Every component keeps the source PTS and time base.</p></div>
+  </div>
+  <div class="chrome"><span class="brand">MATCH <i>/</i> CUT</span><span>02 · Requirements</span></div>
+  <aside class="notes"><p>First, what production means here.</p><p>[click] Functionally: many users upload footage, search any frame, and export a frame-exact cut.</p><p>[click] Non-functionally, I'm designing for these targets. Searches should return in under a second at p95. Indexing should keep pace with uploads, roughly ten thousand hours of footage across tenants. And each tenant's media stays isolated.</p><p>[click] The hard constraint is correctness. A cut has to land on one exact decoded frame, so the system can't approximate frames from timestamps.</p></aside>
+</section>
+
+<!-- 3 -->
+<section class="slide" data-title="The core pipeline">
+  <div class="kicker">Same in prototype and production</div>
+  <h2>Five stages</h2>
+  <div class="pipe">
+    <div class="stage b" data-b="1"><b>01</b><h4>Ingest</h4><p>Decode, record every frame's PTS, detect shot boundaries, hash with SHA-256.</p></div>
+    <div class="stage b" data-b="2"><b>02</b><h4>Index</h4><p>Sample every 0.5 s. DINOv2 global + 2×2 spatial, Farnebäck flow, BlazePose, shape descriptor.</p></div>
+    <div class="stage b" data-b="3"><b>03</b><h4>Search</h4><p>Retrieve nearest neighbours, rerank with motion, pose, shape. One per source family.</p></div>
+    <div class="stage b" data-b="4"><b>04</b><h4>Render</h4><p>Immutable edit spec → PTS-exact boundary frames → H.264 MP4.</p></div>
+    <div class="stage b" data-b="5"><b>05</b><h4>Learn</h4><p>Keep/pass labels + blind A/B → small fine-tune → gated promotion.</p></div>
+  </div>
+  <div class="split b" data-b="5"><div class="bracket">Offline · heavy · throughput-bound — ingest, index, learn</div><div class="bracket on">Online · latency-bound — search</div></div>
+  <div class="chrome"><span class="brand">MATCH <i>/</i> CUT</span><span>03 · Pipeline</span></div>
+  <aside class="notes"><p>Every version of this system, prototype or production, runs the same five stages.</p><p>[click] Ingest decodes the video and records every frame's real presentation timestamp.</p><p>[click] Index samples a frame every half second. It computes DINOv2 embeddings for appearance and composition, optical flow for motion, BlazePose for body pose, and a geometric descriptor for shapes.</p><p>[click] Search retrieves and ranks the next shots.</p><p>[click] Render builds a frame-exact MP4.</p><p>[click] Learn turns user feedback into model improvements. The key split is that indexing is heavy and runs offline. Search is light and runs online.</p></aside>
+</section>
+
+<!-- 4 -->
+<section class="slide" data-title="The prototype today, and the seams">
+  <div class="kicker">Today · one Mac · one process</div>
+  <h2>The prototype, and its seams</h2>
+  <div style="display:grid;grid-template-columns:1120px 1fr;gap:40px;align-items:start">
+    <svg viewBox="0 0 1280 720" width="1120">
+      <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#7f8a6a"/></marker></defs>
+      <g><rect class="box" x="20" y="40" width="240" height="86" rx="8"/><text class="t" x="38" y="78">React UI</text><text class="s" x="38" y="104">static build, same origin</text></g>
+      <g><rect class="box" x="340" y="40" width="240" height="86" rx="8"/><text class="t" x="358" y="78">FastAPI</text><text class="s" x="358" y="104">loopback only</text></g>
+      <g><rect class="box" x="660" y="40" width="240" height="86" rx="8"/><text class="t" x="678" y="78">SQLite WAL</text><text class="s" x="678" y="104">assets · jobs · labels</text></g>
+      <g><rect class="box" x="340" y="230" width="240" height="86" rx="8"/><text class="t" x="358" y="268">Worker thread</text><text class="s" x="358" y="294">one owner (process lock)</text></g>
+      <g><rect class="box" x="20" y="420" width="240" height="86" rx="8"/><text class="t" x="38" y="458">Ingest</text><text class="s" x="38" y="484">PyAV · PTS · shot guard</text></g>
+      <g><rect class="box" x="340" y="420" width="240" height="86" rx="8"/><text class="t" x="358" y="458">Features</text><text class="s" x="358" y="484">DINOv2 · flow · pose · shape</text></g>
+      <g><rect class="box" x="660" y="420" width="240" height="86" rx="8"/><text class="t" x="678" y="458">Search</text><text class="s" x="678" y="484">exact scan, every frame</text></g>
+      <g><rect class="box" x="980" y="420" width="240" height="86" rx="8"/><text class="t" x="998" y="458">Render</text><text class="s" x="998" y="484">FFmpeg · H.264 · atomic</text></g>
+      <g><rect class="box" x="340" y="600" width="240" height="86" rx="8"/><text class="t" x="358" y="638">Feature files</text><text class="s" x="358" y="664">NPZ on local disk</text></g>
+      <path class="ln" d="M260 83H340"/><path class="ln" d="M580 83H660"/>
+      <path class="ln" d="M460 126V230"/><text class="lbl" x="472" y="186">enqueue</text>
+      <path class="ln" d="M780 126V273H580"/><text class="lbl" x="792" y="210">durable jobs</text>
+      <path class="ln" d="M400 316L140 420"/><path class="ln" d="M460 316V420"/><path class="ln" d="M520 316L780 420"/><path class="ln" d="M560 300L1100 420"/>
+      <path class="ln" d="M460 506V600"/><path class="ln" d="M780 506V643H580"/>
+      <g class="b" data-b="2"><rect class="warnbox" x="650" y="410" width="260" height="106" rx="12"/><text class="lbl" x="650" y="545" style="fill:var(--warn)">O(N) IN LIBRARY SIZE</text></g>
+    </svg>
+    <div class="grid" style="gap:18px">
+      <div class="card b" data-b="1"><h3>Jobs table → queue</h3><p>Durable rows; interrupted jobs return to the queue on restart.</p></div>
+      <div class="card b" data-b="1"><h3>Feature key → object store</h3><p>Source SHA-256 + hash of model, preprocessing, sampling.</p></div>
+      <div class="card b" data-b="1"><h3>Edit spec → render cache</h3><p>Immutable and versioned, so renders are idempotent.</p></div>
+      <div class="card b" data-b="2" style="border-color:#7a5643"><h3 style="color:var(--warn)">Doesn't scale</h3><p>Search compares against every sampled frame.</p></div>
+    </div>
+  </div>
+  <div class="chrome"><span class="brand">MATCH <i>/</i> CUT</span><span>04 · Prototype</span></div>
+  <aside class="notes"><p>Here's the prototype. React talks to one FastAPI process. SQLite stores assets, jobs and labels. A single worker thread runs every heavy job, and features live on disk as files.</p><p>[click] That sounds small, but each piece was chosen to map onto a production component. The jobs table is already durable, and interrupted jobs return to the queue, which is queue semantics. Features are keyed by a hash of the source video plus a hash of the model and preprocessing, so they can move straight into object storage. Every render is an immutable edit spec, which makes renders cacheable and idempotent.</p><p>[click] The one piece that doesn't scale is search. Today it compares the query against every sampled frame of every clip. That's linear, so it's the first thing production replaces.</p></aside>
+</section>
+
+<!-- 5 -->
+<section class="slide" data-title="Production architecture">
+  <div class="kicker">Production · multi-tenant</div>
+  <h2 style="margin-bottom:20px">Production architecture</h2>
+  <svg viewBox="0 0 1560 740" width="1480" style="display:block;margin:0 auto">
+    <defs><marker id="arrow2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#7f8a6a"/></marker></defs>
+    <style>#deck svg .ln2{stroke:#7f8a6a;stroke-width:2;fill:none;marker-end:url(#arrow2)}</style>
+    <g class="b" data-b="1">
+      <rect class="zone" x="5" y="10" width="870" height="136" rx="10"/><text class="zl" x="20" y="164">EDGE</text>
+      <rect class="box" x="20" y="30" width="230" height="86" rx="8"/><text class="t" x="36" y="66">Web client</text><text class="s" x="36" y="92">React SPA</text>
+      <rect class="box" x="320" y="30" width="230" height="86" rx="8"/><text class="t" x="336" y="66">API gateway</text><text class="s" x="336" y="92">OIDC auth · rate limits</text>
+      <rect class="box" x="620" y="30" width="230" height="86" rx="8"/><text class="t" x="636" y="66">API service ×N</text><text class="s" x="636" y="92">stateless · autoscaled</text>
+      <rect class="box" x="20" y="250" width="230" height="86" rx="8"/><text class="t" x="36" y="286">CDN</text><text class="s" x="36" y="312">app · signed render URLs</text>
+      <path class="ln2" d="M250 73H320"/><path class="ln2" d="M550 73H620"/><path class="ln2" d="M135 250V116"/>
+    </g>
+    <g class="b" data-b="2">
+      <rect class="box" x="320" y="250" width="230" height="86" rx="8"/><text class="t" x="336" y="286">Object storage</text><text class="s" x="336" y="312">originals · renders</text>
+      <rect class="box" x="620" y="250" width="230" height="86" rx="8"/><text class="t" x="636" y="286">Postgres</text><text class="s" x="636" y="312">assets · jobs · labels · RLS</text>
+      <path class="ln2" d="M735 116V250"/>
+      <path class="ln2" d="M220 116L350 250"/><text class="lbl" x="268" y="168">presigned</text><text class="lbl" x="268" y="186">multipart upload</text>
+      <path class="ln2" d="M320 300H250"/>
+    </g>
+    <g class="b" data-b="3">
+      <rect class="zone" x="5" y="430" width="1550" height="300" rx="10"/><text class="zl" x="20" y="722">ASYNC COMPUTE · AUTOSCALE ON QUEUE DEPTH</text>
+      <rect class="box" x="620" y="450" width="230" height="86" rx="8"/><text class="t" x="636" y="486">Durable queue</text><text class="s" x="636" y="512">SQS / Kafka · retries · DLQ</text>
+      <rect class="box" x="20" y="610" width="230" height="86" rx="8"/><text class="t" x="36" y="646">Ingest workers</text><text class="s" x="36" y="672">CPU · decode · shot split</text>
+      <rect class="box" x="320" y="610" width="230" height="86" rx="8"/><text class="t" x="336" y="646">Render workers</text><text class="s" x="336" y="672">CPU · sandboxed FFmpeg</text>
+      <rect class="box hi" x="920" y="610" width="230" height="86" rx="8"/><text class="t" x="936" y="646">Embedding</text><text class="s" x="936" y="672">GPU · dynamic batching</text>
+      <rect class="box" x="1220" y="610" width="230" height="86" rx="8"/><text class="t" x="1236" y="646">Flow · pose · shape</text><text class="s" x="1236" y="672">CPU pool</text>
+      <path class="ln2" d="M735 336V450"/><text class="lbl" x="747" y="398">outbox</text>
+      <path class="ln2" d="M480 336V493H620"/><text class="lbl" x="492" y="420">upload event</text>
+      <path class="ln2" d="M700 536L135 610"/><path class="ln2" d="M720 536L470 610"/><path class="ln2" d="M770 536L1000 610"/><path class="ln2" d="M800 536L1335 610"/>
+      <path class="ln2" d="M400 610V336"/>
+    </g>
+    <g class="b" data-b="4">
+      <rect class="box hi" x="920" y="30" width="230" height="86" rx="8"/><text class="t" x="936" y="66">Search service</text><text class="s" x="936" y="92">ANN recall → rerank</text>
+      <rect class="box hi" x="1220" y="30" width="230" height="86" rx="8"/><text class="t" x="1236" y="66">Vector index</text><text class="s" x="1236" y="92">ANN · PQ · tenant shards</text>
+      <rect class="box" x="1220" y="250" width="230" height="86" rx="8"/><text class="t" x="1236" y="286">Feature store</text><text class="s" x="1236" y="312">versioned · content-addressed</text>
+      <path class="ln2 hot" d="M850 73H920" style="stroke:var(--accent)"/><text class="lbl" x="852" y="20">p95 &lt; 1 s</text>
+      <path class="ln2" d="M1150 73H1220"/>
+      <path class="ln2" d="M1035 116V293H1220"/><text class="lbl" x="1048" y="282">rerank fetch</text>
+      <path class="ln2" d="M1120 610V580H1190V100H1220"/><text class="lbl" x="1196" y="380" transform="rotate(-90 1196 380)">vectors</text>
+      <path class="ln2" d="M1335 610V336"/>
+    </g>
+    <g class="b" data-b="5">
+      <rect class="box" x="920" y="450" width="230" height="86" rx="8" style="stroke:#e4c78d"/><text class="t" x="936" y="486">Model registry</text><text class="s" x="936" y="512">encoder vN · version hash</text>
+      <path class="ln2" d="M1080 536V610"/><text class="lbl" x="1012" y="568">loads vN</text>
+    </g>
+  </svg>
+  <div class="chrome"><span class="brand">MATCH <i>/</i> CUT</span><span>05 · Production</span></div>
+  <aside class="notes"><p>Here's the production design, built up layer by layer.</p><p>[click] At the edge, the React app is served from a CDN. An API gateway handles authentication and rate limits, and stateless API replicas scale horizontally behind it.</p><p>[click] For state, Postgres holds metadata, jobs, labels and edit specs, all scoped by tenant. Object storage holds originals, feature files and renders. The client uploads directly to storage through presigned multipart URLs, so large videos never pass through the API.</p><p>[click] Heavy work goes through a durable queue to separate worker pools. Decoding and rendering run on CPU. Embedding runs on GPUs with dynamic batching. Each pool autoscales on its own queue depth.</p><p>[click] The interactive path is a dedicated search service. It queries an approximate-nearest-neighbor vector index, then fetches full features from the feature store to rerank.</p><p>[click] A model registry pins the exact encoder version that every worker loads, which is what makes the features reproducible.</p></aside>
+</section>
+
+<!-- 6 -->
+<section class="slide" data-title="Ingest and indexing at scale">
+  <div class="kicker">The throughput problem</div>
+  <h2>Ingest and indexing at scale</h2>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px">
+    <div class="grid" style="gap:22px;align-content:start">
+      <div class="card b" data-b="1"><h3>Content-addressed</h3><p>Upload → SHA-256 → an identical file reuses its asset and features. Never index the same clip twice.</p></div>
+      <div class="card b" data-b="2"><h3>Fan out by shot</h3><p>Ingest splits at shot boundaries. Each shot is an independent, idempotent job, so one long video spreads across many GPUs.</p></div>
+      <div class="card b" data-b="4"><h3>Throughput <span class="tag m" style="margin-left:8px">measured</span></h3><p>M2 laptop: <b>1.07 s</b> of compute per second of footage (186.6 s for 174.5 s). Jobs are independent, so throughput scales linearly with workers.</p><p class="muted" style="margin-top:12px;font-size:20px">GPU workers = upload hours per day × index hours per footage hour ÷ 24</p></div>
+    </div>
+    <div class="card b" data-b="3" style="align-self:start">
+      <h3>Sizing <span class="tag t" style="margin-left:8px">estimate</span></h3>
+      <table style="width:100%;border-collapse:collapse;font-size:23px;line-height:1.5">
+        <tr><td class="muted">Per sample</td><td style="text-align:right">384 + 1,536 floats ≈ <b>7.7 KB</b></td></tr>
+        <tr><td class="muted">Per footage hour</td><td style="text-align:right">7,200 samples ≈ <b>55 MB</b></td></tr>
+        <tr><td class="muted">10,000 hours</td><td style="text-align:right">72 M samples ≈ <b>550 GB</b></td></tr>
+        <tr><td colspan="2" style="padding-top:20px;border-top:1px solid var(--line)"></td></tr>
+        <tr><td class="muted">Full vectors</td><td style="text-align:right">object storage</td></tr>
+        <tr><td class="muted">ANN in memory (PQ 64 B)</td><td style="text-align:right"><b class="accent">≈ 5 GB</b> global · ≈ 10 GB with spatial</td></tr>
+      </table>
+      <p class="muted" style="font-size:19px;margin-top:20px">Only the compressed index is memory-resident. Exact vectors are fetched for the reranked shortlist only.</p>
+    </div>
+  </div>
+  <div class="chrome"><span class="brand">MATCH <i>/</i> CUT</span><span>06 · Indexing</span></div>
+  <aside class="notes"><p>Indexing is the throughput problem.</p><p>[click] An upload creates a content-addressed asset. Identical files are deduplicated by their SHA-256 hash, so the same clip is never indexed twice.</p><p>[click] Ingest splits each video into shots, and shots fan out as independent jobs. One long video can be spread across many GPUs.</p><p>[click] Here's the sizing math. Each sample stores about 1,900 floats, roughly 7.7 kilobytes. An hour of footage is 7,200 samples, about 55 megabytes. Ten thousand hours is around 550 gigabytes of full vectors. Those live in object storage. Only compressed vectors need to sit in memory for the ANN index: about 5 gigabytes for the global index, and about 10 with the spatial index added.</p><p>[click] On my laptop, measured indexing takes about 1.07 seconds of compute per second of footage. Because jobs are independent, throughput scales linearly with GPU workers, so capacity planning is just division.</p></aside>
+</section>
+
+<!-- 7 -->
+<section class="slide" data-title="The search path">
+  <div class="kicker">Latency-bound · online</div>
+  <h2>Search is a funnel</h2>
+  <div style="display:grid;grid-template-columns:1.25fr 1fr;gap:60px">
+    <div class="funnel">
+      <div class="fstep b" data-b="1" style="width:100%"><h4>Every sampled frame in the tenant</h4><span>~10⁷ vectors</span></div>
+      <div class="fstep b" data-b="2" style="width:88%"><h4>ANN recall · global + spatial</h4><span>~200 + 200</span></div>
+      <div class="fstep b" data-b="3" style="width:74%"><h4>Rerank · motion, pose, shape</h4><span>~400 scored</span></div>
+      <div class="fstep b" data-b="4" style="width:60%"><h4>Diversify · 1 per family</h4><span>top 6</span></div>
+      <div class="fstep b" data-b="5" style="width:60%;border-left-color:#e4c78d"><h4>Refine timing · async</h4><span>±0.375 s</span></div>
+      <p class="muted b" data-b="3" style="font-size:20px;margin-top:10px">Reranking cost depends on the shortlist size, not the library size. Tenant filter and source-family exclusion are applied inside recall.</p>
+    </div>
+    <div class="card b budget" data-b="5" style="align-self:start">
+      <h3>Latency budget <span class="tag t" style="margin-left:8px">target p95</span></h3>
+      <div class="row"><span>Query embed (GPU)</span><div class="bar"><i style="width:24%"></i></div><span>60 ms</span></div>
+      <div class="row"><span>ANN recall</span><div class="bar"><i style="width:12%"></i></div><span>30 ms</span></div>
+      <div class="row"><span>Feature fetch</span><div class="bar"><i style="width:24%"></i></div><span>60 ms</span></div>
+      <div class="row"><span>Rerank + diversify</span><div class="bar"><i style="width:32%"></i></div><span>80 ms</span></div>
+      <div class="row"><span>API + network</span><div class="bar"><i style="width:28%"></i></div><span>70 ms</span></div>
+      <div class="row" style="border-top:1px solid var(--line);padding-top:14px"><span><b>Total</b></span><div></div><span class="accent"><b>~300 ms</b></span></div>
+      <p class="muted" style="font-size:18px;margin:14px 0 0">Measured today on a laptop: coarse search median 0.28 s over 8 clips, with exact scan.</p>
+    </div>
+  </div>
+  <div class="chrome"><span class="brand">MATCH <i>/</i> CUT</span><span>07 · Search</span></div>
+  <aside class="notes"><p>Search is a funnel.</p><p>[click] Start with every sampled frame in the tenant's library, potentially tens of millions.</p><p>[click] ANN recall pulls a few hundred neighbors each from the global and spatial indexes. It filters by tenant and excludes the query's own source.</p><p>[click] Reranking applies the expensive signals, motion, pose and shape, but only to that shortlist. So the cost depends on the shortlist size, not the library size.</p><p>[click] Diversification keeps one result per source family, and you get the top six.</p><p>[click] Optional timing refinement runs asynchronously and updates the results in place. On the right is the target latency budget that keeps p95 under a second.</p></aside>
+</section>
+
+<!-- 8 -->
+<section class="slide" data-title="Ranking and the appearance baseline">
+  <div class="kicker">Ranking</div>
+  <h2>Score = what the cut feels like</h2>
+  <div class="formula">
+    <div class="term" style="--w:35"><b>0.35</b><span>Appearance</span><small>DINOv2 CLS cosine</small></div>
+    <div class="term" style="--w:40"><b>0.40</b><span>Composition</span><small>2×2 patch-pool cosine</small></div>
+    <div class="term" style="--w:25"><b>0.25</b><span>Motion</span><small>flow quadrants, across the edit</small></div>
+    <div class="term" style="--w:30;border-style:dashed"><b>× 0.7 + 0.3</b><span>Pose</span><small>when ≥ 6 joints are visible</small></div>
+  </div>
+  <div class="b" data-b="1">
+    <div class="kicker" style="margin:40px 0 0">Demo query · Eye close-up · <span class="accent">Appearance baseline</span> (DINOv2 only)</div>
+    <div class="strip" id="strip"></div>
+  </div>
+  <div class="card b" data-b="2" style="margin-top:28px;padding:20px 28px"><p>The baseline is the yardstick. Ranking versions are <b>config, not code</b>, so they're A/B tested on live traffic. The metric: how often a keepable cut lands in the top 6.</p></div>
+  <div class="chrome"><span class="brand">MATCH <i>/</i> CUT</span><span>08 · Ranking</span></div>
+  <aside class="notes"><p>The default score blends 35 percent appearance, 40 percent spatial composition and 25 percent motion. When pose is detected, that blend counts for 70 percent and pose for 30.</p><p>[click] The demo used the appearance baseline: pure DINOv2 similarity. For the eye, it ranked the solar eclipse first at 0.31, and the marbles second.</p><p>[click] The baseline exists so every ranking change is measured against something. In production, ranking versions are config, not code. So I can A/B test them on live traffic and report how often a keepable cut lands in the top six.</p></aside>
+</section>
+
+<!-- 9 -->
+<section class="slide" data-title="Rendering at scale">
+  <div class="kicker">Deterministic output</div>
+  <h2>Rendering at scale</h2>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px">
+<pre class="spec"><span class="k">edit_spec</span> = {
+  <span class="k">a</span>:  "5817cc…",   <span class="k">ai</span>: 62,
+  <span class="k">b</span>:  "eada34…",   <span class="k">bi</span>: 180,
+  <span class="k">before</span>: 2.0,     <span class="k">after</span>: 2.0,
+  <span class="k">framing</span>: "pad",  <span class="k">height</span>: 1080,
+  <span class="k">renderer</span>: "pts-boundary-v3-30fps"
+}
+<span class="b" data-b="1"><span class="accent">key</span> = sha256(edit_spec)  →  render cache</span></pre>
+    <div class="grid" style="gap:22px;align-content:start">
+      <div class="card b" data-b="1"><h3>Cache by hash</h3><p>Same spec, same bytes. A repeated render is a CDN hit. Writes go to a temp file, then an atomic rename.</p></div>
+      <div class="card b" data-b="2"><h3>Priority queues · sandbox</h3><p>Interactive 360p previews never wait behind 1080p exports. FFmpeg runs isolated, because uploads are untrusted input.</p></div>
+      <div class="card b" data-b="3"><h3>Tested correctness</h3><p>Tests decode the output and compare boundary pixels to the original A and B source frames.</p></div>
+    </div>
+  </div>
+  <div class="chrome"><span class="brand">MATCH <i>/</i> CUT</span><span>09 · Render</span></div>
+  <aside class="notes"><p>A render is defined by an immutable edit spec: the two source frames, the durations, the framing and the renderer version.</p><p>[click] Hashing that spec gives a cache key, so a repeated render is just a CDN hit.</p><p>[click] Previews and exports run on separate priority queues, so an export never blocks someone's interactive preview. FFmpeg runs in a sandbox, because uploaded media is untrusted input.</p><p>[click] Correctness is tested. The tests decode the output and compare the boundary pixels to the original source frames.</p></aside>
+</section>
+
+<!-- 10 -->
+<section class="slide" data-title="Versioning and the learning loop">
+  <div class="kicker">Safe model upgrades</div>
+  <h2>Versioning and the learning loop</h2>
+  <div class="card" style="padding:18px 28px;margin-bottom:26px"><p style="font-family:Menlo,Consolas,monospace;font-size:22px"><span class="accent">feature_key</span> = source_sha256 + hash(model rev, checksums, preprocessing, pooling, sampling, motion/pose defs)</p></div>
+  <svg viewBox="0 0 1620 480" width="1620">
+    <defs><marker id="arrow3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#7f8a6a"/></marker></defs>
+    <style>#deck svg .ln3{stroke:#7f8a6a;stroke-width:2;fill:none;marker-end:url(#arrow3)}</style>
+    <g><rect class="box hi" x="10" y="180" width="270" height="110" rx="10"/><text class="t" x="30" y="226">Serve model vN</text><text class="s" x="30" y="256">frozen encoder is default</text></g>
+    <g class="b" data-b="1"><rect class="box" x="360" y="30" width="270" height="110" rx="10"/><text class="t" x="380" y="76">Collect labels</text><text class="s" x="380" y="106">keep / pass · blind A/B pairs</text><path class="ln3" d="M200 180L380 140"/></g>
+    <g class="b" data-b="2"><rect class="box" x="710" y="30" width="270" height="110" rx="10"/><text class="t" x="730" y="76">Fine-tune</text><text class="s" x="730" y="106">final-block norms only</text><path class="ln3" d="M630 85H710"/>
+      <rect class="box" x="1060" y="30" width="270" height="110" rx="10"/><text class="t" x="1080" y="76">Held-out eval</text><text class="s" x="1080" y="106">source-family-disjoint split</text><path class="ln3" d="M980 85H1060"/></g>
+    <g class="b" data-b="3"><rect class="box" x="1060" y="340" width="270" height="110" rx="10"/><text class="t" x="1080" y="386">Shadow + A/B</text><text class="s" x="1080" y="416">ranking version as config</text><path class="ln3" d="M1195 140V340"/>
+      <rect class="box" x="710" y="340" width="270" height="110" rx="10" style="stroke:#e4c78d"/><text class="t" x="730" y="386">Blue/green backfill</text><text class="s" x="730" y="416">index vN+1 beside vN</text><path class="ln3" d="M1060 395H980"/>
+      <rect class="box" x="360" y="340" width="270" height="110" rx="10"/><text class="t" x="380" y="386">Promote · or roll back</text><text class="s" x="380" y="416">old index kept warm</text><path class="ln3" d="M710 395H630"/>
+      <path class="ln3" d="M380 340L200 290"/>
+      <text class="lbl" x="1212" y="236">ONLY IF IT BEATS</text><text class="lbl" x="1212" y="258">THE BASELINE</text></g>
+  </svg>
+  <div class="chrome"><span class="brand">MATCH <i>/</i> CUT</span><span>10 · Learning loop</span></div>
+  <aside class="notes"><p>Every feature's key includes the model version. That makes model upgrades safe.</p><p>[click] Users label cuts as keep or pass, and blind A/B pairs give pairwise preferences.</p><p>[click] Training fine-tunes only the final block's normalization weights, split by source family so validation never sees training footage.</p><p>[click] A new model goes through shadow evaluation, then backfills a parallel index, blue-green. Traffic flips only when it beats the baseline. The old index stays in place for instant rollback.</p></aside>
+</section>
+
+<!-- 11 -->
+<section class="slide" data-title="Reliability, security, observability, cost">
+  <div class="kicker">Running it</div>
+  <h2>Operating in production</h2>
+  <div class="grid" style="grid-template-columns:repeat(4,1fr)">
+    <div class="card b" data-b="1"><h3>Reliability</h3><ul><li>Idempotent jobs, keyed by content</li><li>Leases + visibility timeouts</li><li>Retries → dead-letter queue</li><li>Atomic writes, no partial files</li></ul></div>
+    <div class="card b" data-b="2"><h3>Security</h3><ul><li>OIDC at the gateway</li><li>Tenant ID + Postgres RLS</li><li>Per-tenant index partitions</li><li>Sandboxed decoders, upload quotas</li></ul></div>
+    <div class="card b" data-b="3"><h3>Observability</h3><ul><li>OpenTelemetry trace per job stage</li><li>SLOs: search p95, index lag, render time</li><li>Queue depth, GPU utilisation</li><li>Ranking metrics per version</li></ul></div>
+    <div class="card b" data-b="4"><h3>Cost</h3><ul><li>Autoscale on queue depth</li><li>Spot GPUs for backfills</li><li>360p previews, 1080p on export</li><li>Dedupe + cache before compute</li></ul></div>
+  </div>
+  <div class="chrome"><span class="brand">MATCH <i>/</i> CUT</span><span>11 · Operations</span></div>
+  <aside class="notes"><p>[click] For reliability, jobs are idempotent and keyed by content. Workers hold leases, failures retry, and poison jobs land in a dead-letter queue. All writes are atomic.</p><p>[click] For security: OIDC authentication, tenant isolation through row-level security and per-tenant index partitions, and sandboxed decoders.</p><p>[click] For observability, traces cover every job stage. Service-level objectives track search p95, indexing lag and render time.</p><p>[click] For cost, workers autoscale on queue depth, backfills run on spot GPUs, and previews render at 360p while exports render at 1080p.</p></aside>
+</section>
+
+<!-- 12 -->
+<section class="slide" data-title="Tradeoffs and what I'd build first">
+  <div class="kicker">Where it stands</div>
+  <h2>Tradeoffs and build order</h2>
+  <div style="display:grid;grid-template-columns:1fr 1.2fr;gap:40px">
+    <div class="card"><h3>Honest today</h3><ul><li>Single-machine proof of concept</li><li>Scores are heuristics, not probabilities</li><li>Weights are uncalibrated starting points</li><li>Fine-tuning waits for real labels</li></ul></div>
+    <div class="b" data-b="1">
+      <div class="funnel">
+        <div class="fstep" style="width:100%"><h4><span class="accent">1</span> · ANN vector index + search service</h4><span>removes O(N)</span></div>
+        <div class="fstep" style="width:100%"><h4><span class="accent">2</span> · Queue + per-stage worker pools</h4><span>throughput</span></div>
+        <div class="fstep" style="width:100%"><h4><span class="accent">3</span> · Postgres, object storage, tenancy</h4><span>isolation</span></div>
+        <div class="fstep" style="width:100%"><h4><span class="accent">4</span> · Label pipeline + gated promotion</h4><span>quality</span></div>
+      </div>
+    </div>
+  </div>
+  <p class="lede b" data-b="2" style="margin-top:44px">The pipeline, the versioning and the correctness tests carry over <span class="accent">unchanged.</span></p>
+  <div class="chrome"><span class="brand">MATCH <i>/</i> CUT</span><span>12 · Thanks</span></div>
+  <aside class="notes"><p>To be clear about where this stands: the prototype is a single-machine proof of concept, and its scores are heuristics, not probabilities.</p><p>[click] If I took it to production, I'd build in this order: the ANN index first, then the queue and worker pools, then multi-tenancy, then the learning loop.</p><p>[click] The pipeline, the versioning and the correctness tests carry over unchanged. That was the point of designing the seams up front. Thanks for watching.</p></aside>
+</section>
+
+</div>
+<div id="notes"></div>
+<div id="hud"></div>
+<div id="presenter" hidden></div>
+
+<script>
+const params=new URLSearchParams(location.search);
+const slides=[...document.querySelectorAll('.slide')];
+const steps=s=>Math.max(0,...[...s.querySelectorAll('.b')].map(e=>+e.dataset.b));
+const channel='BroadcastChannel' in window?new BroadcastChannel('matchcut-slides'):null;
+let cur=0,step=0;
+
+// Fallback values are the captured run; results.json replaces them when served over HTTP.
+const fallback=[["Solar eclipse",.315],["Rolling marbles",.227],["Droplet on a leaf",.150],["Sunset · portrait",.147],["Basketball in flight",.085],["Car in motion",.082]];
+function strip(rows){
+  const el=document.getElementById('strip');el.innerHTML='';
+  rows.forEach(([name,score],i)=>{
+    const n=String(i+1).padStart(2,'0');
+    el.insertAdjacentHTML('beforeend',`<figure class="${i?'':'top'}"><div class="img" style="background-image:url('../part1/captures/candidate-${n}.jpg')"></div><figcaption>${n} · ${name}<small>appearance ${score.toFixed(2)}</small></figcaption></figure>`);
+  });
+}
+strip(fallback);
+if(location.protocol!=='file:')fetch('../part1/captures/results.json').then(r=>r.json()).then(d=>strip(d.results.map(c=>[c.name,c.appearance]))).catch(()=>{});
+
+function fit(){const d=document.getElementById('deck'),k=Math.min(innerWidth/1920,innerHeight/1080);d.style.transform=`translate(-50%,-50%) scale(${k})`;d.style.transformOrigin='center';d.style.left='50%';d.style.top='50%';}
+function render(broadcast=true){
+  slides.forEach((s,i)=>s.classList.toggle('on',i===cur));
+  slides[cur].querySelectorAll('.b').forEach(e=>e.classList.toggle('show',+e.dataset.b<=step));
+  document.getElementById('hud').textContent=`${cur+1}/${slides.length} · ${step}/${steps(slides[cur])}`;
+  document.getElementById('notes').innerHTML=notesHTML(cur,step);
+  history.replaceState(null,'',`${location.search}#${cur+1}.${step}`);
+  if(broadcast&&channel)channel.postMessage({cur,step});
+}
+function notesHTML(i,st){
+  const ps=[...slides[i].querySelectorAll('aside.notes p')];
+  let k=0;return ps.map(p=>{const t=p.innerHTML;if(t.startsWith('[click]'))k++;return `<div class="step ${k===st?'now':''}">${t}</div>`}).join('');
+}
+function go(d){
+  const max=steps(slides[cur]);
+  if(d>0){if(step<max)step++;else if(cur<slides.length-1){cur++;step=0}}
+  else{if(step>0)step--;else if(cur>0){cur--;step=steps(slides[cur])}}
+  render();
+}
+
+if(params.has('all')){
+  document.body.classList.add('all');
+  slides.forEach((s,i)=>{if(!s.id)s.id=`slide-${String(i+1).padStart(2,'0')}`;s.querySelectorAll('.b').forEach(e=>e.classList.add('show'))});
+}else if(params.has('presenter')){
+  document.body.classList.add('presenter');
+  const p=document.getElementById('presenter');p.hidden=false;
+  const t0=Date.now();
+  const draw=()=>{
+    const s=slides[cur],next=slides[cur+1];
+    p.innerHTML=`<div class="meta">SLIDE ${cur+1}/${slides.length} · STEP ${step}/${steps(s)} · ${Math.floor((Date.now()-t0)/60000)}:${String(Math.floor((Date.now()-t0)/1000)%60).padStart(2,'0')}</div><h1>${s.dataset.title}</h1>${notesHTML(cur,step)}<div class="next">Next slide: ${next?next.dataset.title:'end'}</div>`;
+  };
+  if(channel)channel.onmessage=e=>{({cur,step}=e.data);draw()};
+  addEventListener('keydown',e=>{if(['ArrowRight',' ','PageDown'].includes(e.key))channel?.postMessage({key:1});if(['ArrowLeft','PageUp'].includes(e.key))channel?.postMessage({key:-1})});
+  setInterval(draw,1000);draw();
+}else{
+  const fromHash=()=>{const m=location.hash.match(/^#(\d+)(?:\.(\d+))?/);if(m){cur=Math.min(slides.length-1,+m[1]-1);step=Math.min(steps(slides[cur]),+(m[2]||0))}};
+  fromHash();addEventListener('hashchange',()=>{fromHash();render()});
+  if(channel)channel.onmessage=e=>{if(e.data.key)go(e.data.key)};
+  addEventListener('resize',fit);fit();render();
+  addEventListener('keydown',e=>{
+    if(['ArrowRight',' ','PageDown','Enter'].includes(e.key)){e.preventDefault();go(1)}
+    else if(['ArrowLeft','PageUp','Backspace'].includes(e.key)){e.preventDefault();go(-1)}
+    else if(e.key==='Home'){cur=0;step=0;render()}
+    else if(e.key==='End'){cur=slides.length-1;step=steps(slides[cur]);render()}
+    else if(e.key==='n'||e.key==='N'){document.getElementById('notes').classList.toggle('on');document.getElementById('hud').classList.toggle('on')}
+    else if(e.key==='p'||e.key==='P')window.open(location.pathname+'?presenter','matchcut-presenter','width=900,height=700');
+    else if(e.key==='f'||e.key==='F')document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();
+  });
+  addEventListener('click',e=>{if(e.target.closest('#notes'))return;go(e.clientX<innerWidth/4?-1:1)});
+}
+</script>
+</body>
+</html>

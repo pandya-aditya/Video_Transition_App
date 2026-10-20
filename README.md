@@ -53,3 +53,19 @@ The experimental checkpoint and report live in `data/models/adapted-normalizatio
 - Fine-tuning, the subjective quality gate, and three approved demo cuts require your actual review. Current limitations and measured timings belong in `docs/benchmark-report.md`.
 
 See [planning decisions](docs/planning-decisions.md), [implementation plan](docs/poc-plan.md), [model research](docs/feasibility-research.md), [architecture](docs/architecture.md), and [demo script](docs/demo-script.md). Exact footage source, author, license and checksum are in `samples-manifest.json`; retain attribution and applicable share-alike terms when sharing adapted exports.
+
+## Your targeted footage
+
+The workspace `Videos/` folder is approved local input. Its eight current clips are imported as managed copies into **My targeted clips**, which is now the default library/search scope. The original samples remain available through the collection selector. Originals, overlays and audio in the input files are unchanged; outputs remain muted as agreed. These user-provided files are not assigned a public reuse license and are excluded from Git.
+
+After adding files, click **Sync Videos folder**. Identical files reuse their managed asset and cached features. The command-line equivalent is:
+
+```sh
+.venv/bin/python -m matchcut.cli import-folder --folder Videos --collection targeted
+```
+
+**Shape + motion** unions geometric rounded-object candidates with DINOv2's global/spatial retrieval. Geometric evidence checks position and scale; it is classical image analysis, not another pretrained model. The learned encoder remains active. Use **Composition + motion** for action-oriented cuts such as car/cheetah; keep the appearance baseline for comparison. Geometric detection can miss transparent objects or detect texture/overlays. Neither mode guarantees a useful cut.
+
+**Refine incoming timing** evaluates nearby incoming frames at roughly 0.125-second intervals around the strongest candidate from each shortlisted source family. It adds processing time; uncheck for quicker coarse retrieval. Manual adjustment remains one actual source frame at a time. Choose **1 second** or **0.5 seconds** of context to search early moments that cannot accommodate the default two seconds. Preview/export inherit the search context.
+
+Run `PYTHONPATH=. .venv/bin/python scripts/benchmark_targeted.py` to reproduce the collection-scoped comparison. It writes actual results and timings to `data/targeted-benchmark.json`; these are not human quality judgments.

@@ -91,3 +91,7 @@ The design brief contains proposals, not accepted defaults. Each of its 27 inter
 9. Implementation plan recorded in `docs/poc-plan.md`; proceed with the already-authorized build. User feedback/ratings remain necessary to evaluate aesthetic success and perform the agreed preference-based fine-tuning, not as a routine build approval.
 
 Research hypotheses and primary sources are in [feasibility-research.md](feasibility-research.md). They are not user decisions or measured benchmarks.
+
+## Follow-up — targeted local footage (2026-10-20)
+
+The user added `Videos/` and explicitly authorized using its clips and making the necessary code changes. Eight files were inspected and imported locally as managed copies. They form the default `targeted` collection; original samples are retained in a separate selectable scope. No upload, paid service, training, or new model download was used. Source reuse rights were not inferred from these user-provided files. Added optional rounded-object retrieval and incoming timing refinement; the subjective quality gate still requires feedback on real playback.

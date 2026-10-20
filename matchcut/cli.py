@@ -3,9 +3,13 @@ from . import store,media
 from .inference import Engine
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('command',choices=['samples','search','motion-benchmark']);p.add_argument('--asset');p.add_argument('--frame',type=int);args=p.parse_args()
+    p=argparse.ArgumentParser();p.add_argument('command',choices=['samples','search','motion-benchmark','import-folder']);p.add_argument('--folder');p.add_argument('--collection',default='targeted');p.add_argument('--asset');p.add_argument('--frame',type=int);args=p.parse_args()
     store.init();engine=Engine()
-    if args.command=='samples':
+    if args.command=='import-folder':
+        from .library import import_folder
+        if not args.folder:p.error('--folder is required')
+        print(import_folder(args.folder,args.collection,engine,lambda p:print(f'{p:.0%}',flush=True)))
+    elif args.command=='samples':
         for source in json.loads((store.ROOT/'samples-manifest.json').read_text()):
             a=media.import_file(store.ROOT/source['path'],source.get('name',source['title'].removeprefix('File:')),source['family'],source)
             a.update(family=source['family'],name=source.get('name',a['name']),attribution=source);store.save_asset(a)

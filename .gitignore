@@ -6,3 +6,9 @@ __pycache__/
 web/node_modules/
 web/dist/
 .DS_Store
+
+# User-provided footage stays local.
+Videos/
+# Demo captures and slide exports contain that footage.
+demo/part1/captures/
+demo/part2/export/

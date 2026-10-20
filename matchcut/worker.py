@@ -1,5 +1,6 @@
 import fcntl, json, threading, time, traceback
 from . import store,media
+from .library import select_collection
 from .inference import Engine
 
 class Cancelled(Exception):pass
@@ -9,15 +10,21 @@ class Worker:
         if store.job(key)['state']=='cancelled':raise Cancelled()
         store.update_job(key,progress=p)
     def execute(self,key,kind,body):
-        if kind in ('index','search') and self.engine is None:self.engine=Engine()
+        if kind in ('index','index-folder','search') and self.engine is None:self.engine=Engine()
+        if kind=='index-folder':
+            from .library import import_folder
+            ids=import_folder(body['path'],body.get('collection','targeted'),self.engine,lambda p:self.progress(key,p))
+            return {'assets':ids}
         if kind=='index':
             a=media.import_file(body['path'],body.get('name'),body.get('family'))
+            a['collections']=sorted(set(a.get('collections',[])+[body.get('collection','targeted')]))
+            store.save_asset(a)
             self.engine.index(a,lambda p:self.progress(key,p))
             return {'asset':a['id']}
         if kind=='adapt':
             from .adaptation import fine_tune
             return fine_tune(lambda p:self.progress(key,p))
-        if kind=='search':return self.engine.search(store.asset(body['asset']),body['frame'],store.assets(),body.get('mode','combined'),body.get('nearby',True))
+        if kind=='search':return self.engine.search(store.asset(body['asset']),body['frame'],select_collection(store.assets(),body.get('collection','all')),body.get('mode','combined'),body.get('nearby',True),body.get('refine',True),body.get('before',2),body.get('after',2))
         if kind=='render':return media.render(store.asset(body['a']),body['ai'],store.asset(body['b']),body['bi'],body.get('framing','pad'),body.get('height',360),body.get('before',2),body.get('after',2))
         raise ValueError('Unknown job kind')
     def run(self):

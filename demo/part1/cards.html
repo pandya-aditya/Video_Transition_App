@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Match Cut — demo cards</title>
+<style>
+  :root{--bg:#11120f;--ink:#edece4;--muted:#9da28f;--dim:#737e65;--line:#33362b;--accent:#c5ed80;--panel:#191b16}
+  *{box-sizing:border-box}
+  body{margin:0;background:#000;font-family:Arial,Helvetica,sans-serif;color:var(--ink)}
+  .card{width:1920px;height:1080px;background:var(--bg);position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:center;padding:0 180px;margin:0 auto 40px}
+  .brand{position:absolute;top:64px;left:180px;font-size:30px;font-weight:800;letter-spacing:-1.4px}
+  .brand i{font-style:normal;color:var(--accent)}
+  .tag{position:absolute;top:74px;right:180px;font-size:14px;letter-spacing:4px;color:var(--dim)}
+  .eyebrow{font-size:20px;letter-spacing:5px;color:#b8c69e;text-transform:uppercase;margin-bottom:28px}
+  h1{font-family:Georgia,serif;font-weight:400;font-size:150px;letter-spacing:-6px;line-height:1;margin:0}
+  h2{font-family:Georgia,serif;font-weight:400;font-size:96px;letter-spacing:-3.5px;line-height:1.05;margin:0}
+  p.lede{font-size:34px;line-height:1.5;color:var(--muted);max-width:1240px;margin:40px 0 0}
+  .accent{color:var(--accent)}
+  .rule{position:absolute;bottom:64px;left:180px;right:180px;border-top:1px solid var(--line);padding-top:22px;display:flex;justify-content:space-between;font-size:15px;letter-spacing:3px;color:var(--dim);text-transform:uppercase}
+  .num{font-size:22px;letter-spacing:2px;color:var(--dim);margin-bottom:22px}
+  .meta{display:flex;gap:56px;margin-top:56px}
+  .meta div{border-top:2px solid var(--accent);padding-top:18px}
+  .meta b{display:block;font-size:15px;letter-spacing:3px;color:var(--dim);font-weight:400;margin-bottom:10px}
+  .meta span{font-size:34px;font-variant-numeric:tabular-nums}
+  .split{display:grid;grid-template-columns:1fr 1.1fr;gap:90px;align-items:center}
+  .frame{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:8px;display:block;background:#070805}
+  .strip{display:grid;grid-template-columns:repeat(6,1fr);gap:18px;margin-top:60px}
+  .strip figure{margin:0;background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .strip figure.top{border-color:var(--accent)}
+  .strip img{width:100%;aspect-ratio:16/10;object-fit:cover;display:block}
+  .strip figcaption{padding:14px 16px 18px;font-size:19px}
+  .strip small{display:block;color:var(--muted);font-size:15px;margin-top:8px;font-variant-numeric:tabular-nums}
+  .bar{height:3px;background:#323d26;margin-top:12px}.bar i{display:block;height:3px;background:#a2bf75}
+  .cut{display:grid;grid-template-columns:1fr 90px 1fr;align-items:center;margin-top:56px}
+  .cut .glyph{text-align:center;font-size:54px;color:var(--accent)}
+  .cut figure{margin:0}.cut figcaption{margin-top:18px;font-size:19px;color:var(--muted);letter-spacing:1px}
+  .problem{display:grid;grid-template-columns:repeat(3,1fr);gap:40px;margin-top:70px}
+  .problem div{border-top:1px solid var(--line);padding-top:24px;font-size:26px;line-height:1.45;color:#c9cbbd}
+  .problem b{display:block;color:var(--accent);font-size:16px;letter-spacing:3px;font-weight:400;margin-bottom:14px}
+  .credits{font-size:22px;line-height:1.8;color:var(--muted);margin-top:56px;max-width:1300px}
+  .credits b{color:var(--ink);font-weight:400}
+</style>
+</head>
+<body>
+
+<section class="card" id="01-title">
+  <div class="brand">MATCH <i>/</i> CUT</div><div class="tag">A STUDY IN CONTINUITY</div>
+  <div class="eyebrow">The space between two shots</div>
+  <h1>Find what follows.</h1>
+  <p class="lede">A local tool that looks at the last frame of one shot and finds the clip that should come next, using pretrained vision models.</p>
+  <div class="rule"><span>Part 1 · The product</span><span>React · FastAPI · DINOv2</span></div>
+</section>
+
+<section class="card" id="02-problem">
+  <div class="brand">MATCH <i>/</i> CUT</div>
+  <div class="num">THE PROBLEM</div>
+  <h2>A great match cut is hiding<br>somewhere in <span class="accent">hours of footage.</span></h2>
+  <div class="problem">
+    <div><b>SHAPE</b>A pupil becomes an eclipse. A ball becomes the sun.</div>
+    <div><b>MOTION</b>Movement that carries across the edit instead of stopping at it.</div>
+    <div><b>FRAME-EXACT</b>The cut has to land on one specific source frame, not "about two seconds in."</div>
+  </div>
+  <div class="rule"><span>Editors find these from memory</span><span>Match Cut searches for them</span></div>
+</section>
+
+<section class="card" id="03-pick-a-moment">
+  <div class="brand">MATCH <i>/</i> CUT</div>
+  <div class="split">
+    <div>
+      <div class="num">01 · PICK A MOMENT</div>
+      <h2 style="font-size:78px">Choose the last frame of the outgoing shot.</h2>
+      <div class="meta">
+        <div><b>CLIP</b><span>Eye close-up</span></div>
+        <div><b>FRAME</b><span>50</span></div>
+        <div><b>TIME · PTS</b><span>2.083 s · 25600</span></div>
+      </div>
+    </div>
+    <img class="frame" src="captures/outgoing.jpg" alt="">
+  </div>
+  <div class="rule"><span>Decoded source-frame index, not fps × time</span><span>Step one frame at a time</span></div>
+</section>
+
+<section class="card" id="04-appearance-baseline">
+  <div class="brand">MATCH <i>/</i> CUT</div>
+  <div class="num">02 · APPEARANCE BASELINE</div>
+  <h2>DINOv2 similarity <span class="accent">only.</span></h2>
+  <p class="lede" style="margin-top:24px">The same pretrained embedding, ranked by visual likeness alone. It is the reference that every smarter ranking mode has to beat.</p>
+  <div class="strip" id="strip"></div>
+  <div class="rule"><span id="timing">6 matches</span><span>One result per source family</span></div>
+</section>
+
+<section class="card" id="05-the-cut">
+  <div class="brand">MATCH <i>/</i> CUT</div>
+  <div class="num">03 · THE CUT</div>
+  <h2>Pupil <span class="accent">→</span> eclipse.</h2>
+  <div class="cut">
+    <figure><img class="frame" src="captures/candidate-01-outgoing.jpg" alt=""><figcaption id="out-cap">OUTGOING · EYE CLOSE-UP · FRAME 62 · 2.583 s</figcaption></figure>
+    <div class="glyph">/</div>
+    <figure><img class="frame" src="captures/candidate-01.jpg" alt=""><figcaption id="in-cap">INCOMING · SOLAR ECLIPSE · FRAME 180 · 6.006 s</figcaption></figure>
+  </div>
+  <div class="rule"><span>Hard cut · 2 s each side · muted</span><span>Exported as 1080p H.264</span></div>
+</section>
+
+<section class="card" id="06-credits">
+  <div class="brand">MATCH <i>/</i> CUT</div>
+  <div class="eyebrow">Built by Aditya Pandya</div>
+  <h2>Every ending is<br>a beginning.</h2>
+  <div class="credits">
+    <b>Next:</b> how it works, and how it scales to production.<br>
+    Footage: iStock by Getty Images preview clips, shown with watermarks, for demonstration only.<br>
+    All inference ran locally on an M2 MacBook Air. Scores are heuristics, not probabilities.
+  </div>
+  <div class="rule"><span>Part 2 · Architecture</span><span>Match Cut</span></div>
+</section>
+
+<script>
+fetch('captures/results.json').then(r=>r.json()).then(d=>{
+  const strip=document.getElementById('strip');
+  d.results.forEach((c,i)=>{
+    const f=document.createElement('figure');if(i===0)f.className='top';
+    f.innerHTML=`<img src="captures/candidate-${String(i+1).padStart(2,'0')}.jpg" alt=""><figcaption>${String(i+1).padStart(2,'0')} · ${c.name}<small>appearance ${c.appearance.toFixed(2)}</small><div class="bar"><i style="width:${Math.min(100,Math.max(0,c.score)*100/d.results[0].score)}%"></i></div></figcaption>`;
+    strip.appendChild(f);
+  });
+  document.getElementById('timing').textContent=`${d.results.length} matches · ${d.timing.total.toFixed(2)} s engine time · ${d.device.toUpperCase()}`;
+  const r=d.rendered.edit,top=d.results[0],q=d.query;
+  document.getElementById('out-cap').textContent=`OUTGOING · ${q.name.toUpperCase()} · FRAME ${r.ai} · ${top.out_time.toFixed(3)} s`;
+  document.getElementById('in-cap').textContent=`INCOMING · ${top.name.toUpperCase()} · FRAME ${r.bi} · ${top.time.toFixed(3)} s`;
+  document.body.dataset.ready='1';
+});
+</script>
+</body>
+</html>
