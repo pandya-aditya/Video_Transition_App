@@ -1,0 +1,15 @@
+torch==2.5.1
+torchvision==0.20.1
+transformers==4.46.2
+numpy<2
+av>=13,<17
+opencv-contrib-python<4.12
+imageio-ffmpeg==0.6.0
+fastapi>=0.115,<1
+uvicorn>=0.30,<1
+python-multipart>=0.0.18
+pillow>=10,<13
+pytest>=8,<10
+httpx>=0.27,<1
+
+mediapipe==0.10.32
