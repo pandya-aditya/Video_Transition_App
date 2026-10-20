@@ -71,3 +71,7 @@ Meaningful verification covers source timing/VFR/rotation, ordered scoring and s
 Show the small source collection and completed processing. Select an outgoing sports frame, search, and play the six varied results. Compare one motion-aware suggestion against the appearance baseline. Step a cut by a frame and toggle framing, then export/play the muted 1080p transition. Open diagnostics for real latency and component evidence. Show frozen/adapted comparison only after training/evaluation. End with one documented failure and the next experiment. Record this local workflow alongside the live runnable app.
 
 Priority: working editing flow and playable results first, then evaluation evidence and documentation. No calendar deadline. This plan will be updated from measured evidence without silently changing material user choices.
+
+## Evidence update — 2026-10-20
+
+The first real pipeline and local review app run on ten clips (174 seconds). Initial visual inspection and user feedback show insufficient transition quality. Before expanding UI or promoting adaptation, prioritize the positive-edit/recall experiment in `benchmark-report.md`. Current model rankings are experimental; no quality gate or fine-tuning improvement has been claimed. A 25-pair blind review set exists, but weak candidate coverage must be addressed before treating those preferences as a sufficient training corpus.

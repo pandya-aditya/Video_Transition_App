@@ -45,7 +45,7 @@ def test_rotation_matches_ffmpeg_display(tmp_path):
     from PIL import Image
     original=tmp_path/'normal.mp4';fixture(original)
     rotated=tmp_path/'rotated.mp4'
-    subprocess.run([media.FFMPEG,'-v','error','-i',str(original),'-c','copy','-metadata:s:v:0','rotate=90',str(rotated)],check=True)
+    subprocess.run([media.FFMPEG,'-v','error','-display_rotation','90','-i',str(original),'-c','copy',str(rotated)],check=True)
     a=dict(id='rotated',path=str(rotated),**media.probe(rotated))
     expected=tmp_path/'display.png'
     subprocess.run([media.FFMPEG,'-v','error','-i',str(rotated),'-frames:v','1',str(expected)],check=True)
